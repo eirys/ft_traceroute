@@ -1,0 +1,30 @@
+services:
+  debian:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: debian:42
+    container_name: debian42
+    network_mode: host        # Enable host network mode
+    volumes:
+      - x11:/tmp/.X11-unix:ro # x11 socket sharing for graphical applications
+      - trace_output:/home/trace_output:ro
+    environment:
+      - DISPLAY=${DISPLAY}    # Graphical applications display
+    cap_add:
+      - NET_ADMIN             # Required for sockets
+      - NET_RAW
+
+volumes:
+  x11:
+    driver: local
+    driver_opts:
+      type: none
+      device: /tmp/.X11-unix
+      o: bind
+  trace_output:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/trace_output
+      o: bind

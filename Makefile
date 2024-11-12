@@ -22,7 +22,10 @@ OBJ_SUBDIRS	:=	$(addprefix $(OBJ_DIR)/,$(SUBDIRS))
 INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 
 # ---------------------------------- SOURCES --------------------------------- #
-SRC_FILES	:=	main.c
+SRC_FILES	:=	main.c \
+				$(NETWORK_DIR)/send_request.c \
+				$(INPUT_DIR)/options.c \
+				$(UTILS_DIR)/log.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
 OBJ			:=	$(addprefix $(OBJ_DIR)/,$(SRC_FILES:.c=.o))
@@ -42,8 +45,8 @@ CFLAGS		:=	-MMD \
 				-std=gnu17
 
 # Enable modes ------
-# debug := 1
-error := 1
+debug := 1
+# error := 1
 # optimize := 1
 
 ifdef error
@@ -80,7 +83,15 @@ CONTAINER	:=	debian42
 # ============================================================================ #
 
 .PHONY: all
-all: $(NAME)
+all: $(NAME) copy
+
+.PHONY: trace_output
+trace_output:
+	mkdir -p trace_output/
+
+.PHONY: copy
+copy: trace_output
+	cp $(NAME) trace_output/$(NAME)
 
 -include $(DEP)
 
@@ -111,7 +122,7 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: all graphics_permission
+up: trace_output graphics_permission
 	$(COMPOSE) up -d
 
 .PHONY: graphics_permission
