@@ -8,7 +8,12 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_Options {
-    bool m_help;
+    u32     m_hoplimit;     /* -m --max-hops : Max TTL sent */
+    u32     m_queries;      /* -q --queries : Number of queries/probes sent */
+    u32     m_simultaneous; /* -s --sim-queries : Number of simultaneous probes */
+    u16     m_port;         /* -p --port : Destination port */
+    u8      m_tos;          /* -t --tos : Type of Service */
+    bool    m_help;
 } Options;
 
 typedef struct s_Arguments {

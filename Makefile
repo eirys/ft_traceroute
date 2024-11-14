@@ -122,7 +122,8 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: trace_output graphics_permission
+up: graphics_permission
+# up: trace_output graphics_permission
 	$(COMPOSE) up -d
 
 .PHONY: graphics_permission
