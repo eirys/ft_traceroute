@@ -4,6 +4,8 @@
 #include "log.h"
 #include "options.h"
 
+pid_t g_pid;
+
 /* -------------------------------------------------------------------------- */
 
 static
@@ -24,6 +26,11 @@ FT_RESULT _check_privileges() {
     return FT_SUCCESS;
 }
 
+static
+FT_RESULT _trigger() {
+
+}
+
 /* -------------------------------------------------------------------------- */
 
 int main(const int arg_count, char* const* arg_value) {
@@ -33,6 +40,8 @@ int main(const int arg_count, char* const* arg_value) {
     if (retrieve_arguments(arg_count, arg_value) == FT_FAILURE) {
         return EXIT_FAILURE;
     }
+
+    g_pid = getpid() & 0xFFFF | 0x8000; /* Retrieve the last 16 bits of the PID and set the most significant bit to 1 */
 
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);

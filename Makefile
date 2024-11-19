@@ -24,6 +24,7 @@ INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 # ---------------------------------- SOURCES --------------------------------- #
 SRC_FILES	:=	main.c \
 				$(NETWORK_DIR)/send_request.c \
+				$(NETWORK_DIR)/wait_response.c \
 				$(INPUT_DIR)/options.c \
 				$(UTILS_DIR)/log.c
 

@@ -2,11 +2,20 @@
 #include <string.h>
 
 #include "options.h"
+#include "network_io.h"
 #include "log.h"
 
 /* --------------------------------- GLOBALS -------------------------------- */
 
 Arguments g_arguments = {
+    .m_options.m_packet_size = UDP_PAYLOAD_SIZE,
+    .m_options.m_hoplimit = 30U,
+    .m_options.m_queries = 3U,
+    .m_options.m_simultaneous = 1U,
+    .m_options.m_src_port = 4242U,
+    .m_options.m_dest_port = 2424U,
+    .m_options.m_tos = 0x0,
+    .m_options.m_numeric = false,
     .m_options.m_help = false,
     .m_destination = NULL
 };
@@ -124,6 +133,9 @@ FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
 
     if (optind + 1 < arg_count) {
         log_error("too many arguments (use flag `--help` for indications)");
+    //     g_arguments.m_options.m_packet_size = (u32)atoi(arg_values[optind + 1]); // TODO
+    // } else if (optind + 2 < arg_count) {
+        // // log_error("too many arguments (use flag `--help` for indications)");
         return FT_FAILURE;
     } else if (g_arguments.m_destination == NULL) {
         log_error("no destination provided (use flag `--help` for indications)");

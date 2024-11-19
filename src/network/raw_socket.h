@@ -8,24 +8,25 @@
 /*                                   STRUCT                                   */
 /* -------------------------------------------------------------------------- */
 
-enum e_SocketType {
-    Raw,
-    Datagram
-};
-
 typedef struct s_SocketInfo {
-    struct sockaddr_in* m_ipv4;
-    // char*               m_ipv4_str;
-    int                 m_fd;           /* File descriptor */
-    enum e_SocketType   m_type;
+    // void*                   m_data;         /* IPv4 if raw socket */
+    struct in_addr          m_ipv4;         /* IPv4 address */
+    int                     m_fd;           /* File descriptor */
 } SocketInfo;
 
 /* -------------------------------------------------------------------------- */
 /*                                   GLOBALS                                  */
 /* -------------------------------------------------------------------------- */
 
-extern SocketInfo g_send_socket;
-extern SocketInfo g_recv_socket;
+/**
+ * @brief Sending socket.
+ */
+extern SocketInfo g_udp_socket;
+
+/**
+ * @brief Receiving socket.
+ */
+extern SocketInfo g_raw_socket;
 
 /* -------------------------------------------------------------------------- */
 /*                                 PROTOTYPES                                 */

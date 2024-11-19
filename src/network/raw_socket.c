@@ -5,13 +5,16 @@
 
 #include "log.h"
 #include "wrapper.h"
+#include "options.h"
 
 /* -------------------------------------------------------------------------- */
 
-RawSocket  g_socket = {
-    .m_fd = -1,
-    .m_ipv4 = NULL,
-    .m_ipv4_str = NULL
+SocketInfo  g_udp_socket = {
+    .m_fd = -1
+};
+
+SocketInfo  g_raw_socket = {
+    .m_fd = -1
 };
 
 /* -------------------------------------------------------------------------- */
@@ -27,8 +30,6 @@ struct addrinfo* _resolve_ip(const char* destination) {
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;          /* Allow IPv4 */
-    hints.ai_socktype = SOCK_RAW;       /* Raw socket */
-    hints.ai_protocol = IPPROTO_ICMP;   /* ICMPv4 */
 
     if (Getaddrinfo(destination, NULL, &hints, &output) == FT_FAILURE) {
         return NULL;
@@ -43,43 +44,59 @@ FT_RESULT _destroy_malformed_data(void) {
         freeaddrinfo(_destination_info);
     }
 
-    destroy_raw_socket();
+    destroy_sockets();
 
     return FT_FAILURE;
 }
 
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT create_raw_socket(const char* destination) {
+// TODO
+//
+//
+
+
+/**
+ * @brief Open sending socket (UDP) and receiving socket (RAW).
+ */
+FT_RESULT create_sockets(const char* destination) {
     _destination_info = _resolve_ip(destination);
     if (_destination_info == NULL) {
         return _destroy_malformed_data();
     }
 
     /* Open raw socket */
-    g_socket.m_fd = Socket(_destination_info->ai_family, _destination_info->ai_socktype, _destination_info->ai_protocol);
-    if (g_socket.m_fd == -1) {
-        return _destroy_malformed_data();
-    }
+    g_raw_socket.m_fd = Socket(_destination_info->ai_family, SOCK_RAW, IPPROTO_ICMP);
 
-    /* Remember sockaddr_in */
-    g_socket.m_ipv4 = Malloc(sizeof(struct sockaddr_in));
-    if (g_socket.m_ipv4 == NULL) {
+    /* Open udp socket */
+    g_udp_socket.m_fd = Socket(_destination_info->ai_family, SOCK_DGRAM, 0);
+
+    if (g_raw_socket.m_fd == -1 || g_udp_socket.m_fd == -1) {
         return _destroy_malformed_data();
     }
-    *g_socket.m_ipv4 = *(struct sockaddr_in*)_destination_info->ai_addr;
 
     /* Convert binary IPv4 to string */
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &g_socket.m_ipv4->sin_addr, ip, INET_ADDRSTRLEN);
-    g_socket.m_ipv4_str = Strdup(ip);
-    if (g_socket.m_ipv4_str == NULL) {
-        return _destroy_malformed_data();
-    }
+    // char ip[INET_ADDRSTRLEN];
+    // inet_ntop(AF_INET, &g_raw_socket.m_ipv4->sin_addr, ip, INET_ADDRSTRLEN);
+    // g_raw_socket.m_ipv4_str = Strdup(ip);
+    // if (g_raw_socket.m_ipv4_str == NULL) {
+    //     return _destroy_malformed_data();
+    // }
+
+    /* Remember destination IPv4 */
+    g_udp_socket.m_ipv4 = ((struct sockaddr_in*)_destination_info->ai_addr)->sin_addr;
 
     /* IP Header: Tell the kernel that we build and include our own IP header */
     const i32 option_value = 1;
-    setsockopt(g_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
+    setsockopt(g_udp_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
+
+    /* Bind udp socket source port */
+    struct sockaddr_in source = {
+        .sin_family = AF_INET,
+        .sin_port = htons(g_arguments.m_options.m_src_port),
+        .sin_addr = { .s_addr = INADDR_ANY }
+    };
+    bind(g_udp_socket.m_fd, (struct sockaddr*)&source, sizeof(source));
 
     freeaddrinfo(_destination_info);
     _destination_info = NULL;
@@ -87,14 +104,11 @@ FT_RESULT create_raw_socket(const char* destination) {
     return FT_SUCCESS;
 }
 
-void destroy_raw_socket(void) {
-    if (g_socket.m_fd != -1) {
-        Close(g_socket.m_fd);
+void destroy_sockets(void) {
+    if (g_raw_socket.m_fd != -1) {
+        Close(g_raw_socket.m_fd);
     }
-    if (g_socket.m_ipv4 != NULL) {
-        Free(g_socket.m_ipv4);
-    }
-    if (g_socket.m_ipv4_str != NULL) {
-        Free(g_socket.m_ipv4_str);
+    if (g_udp_socket.m_fd != -1) {
+        Close(g_udp_socket.m_fd);
     }
 }
