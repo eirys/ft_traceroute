@@ -8,13 +8,15 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_Options {
-    u32     m_packet_size; /* Packet size, set after destination */
-    u32     m_hoplimit;     /* -m --max-hops : Max TTL sent */
+    u32     m_packet_size;  /* Packet size, set after destination */
     u32     m_queries;      /* -q --queries : Number of queries/probes sent */
-    u32     m_simultaneous; /* -s --sim-queries : Number of simultaneous probes */
+    u32     m_simultaneous; /* -N --sim-queries : Number of simultaneous probes */
+    u32     m_timeout;      /* -w --wait : Timeout for a probe */
     u16     m_src_port;     /* --sport : Source port */
     u16     m_dest_port;    /* -p --port : Destination port */
     u8      m_tos;          /* -t --tos : Type of Service */
+    u8      m_max_hop;      /* -m --max-hops : Max TTL sent */
+    u8      m_start_hop;    /* -f --first-hop : First TTL sent */
     bool    m_numeric;      /* -n --numeric : Numeric output only */
     bool    m_help;
 } Options;

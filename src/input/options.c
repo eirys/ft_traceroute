@@ -9,12 +9,14 @@
 
 Arguments g_arguments = {
     .m_options.m_packet_size = UDP_PAYLOAD_SIZE,
-    .m_options.m_hoplimit = 30U,
     .m_options.m_queries = 3U,
     .m_options.m_simultaneous = 1U,
+    .m_options.m_timeout = 5U,
     .m_options.m_src_port = 4242U,
     .m_options.m_dest_port = 2424U,
     .m_options.m_tos = 0x0,
+    .m_options.m_max_hop = 30U,
+    .m_options.m_start_hop = 1U,
     .m_options.m_numeric = false,
     .m_options.m_help = false,
     .m_destination = NULL

@@ -1,10 +1,16 @@
 #include <stdlib.h> /* exit */
 #include <unistd.h> /* getpid */
+#include <stdio.h> /* printf */
 
+#include "network_io.h"
 #include "log.h"
+#include "raw_socket.h"
 #include "options.h"
+#include "signal_handlers.h"
 
-pid_t g_pid;
+/* --------------------------------- GLOBALS -------------------------------- */
+
+pid_t       g_pid;
 
 /* -------------------------------------------------------------------------- */
 
@@ -27,8 +33,48 @@ FT_RESULT _check_privileges() {
 }
 
 static
-FT_RESULT _trigger() {
+FT_RESULT _traceroute() {
+    /* Setup */
+    if (create_sockets(g_arguments.m_destination) == FT_FAILURE) {
+        return FT_FAILURE;
+    }
 
+    const Options* options = &g_arguments.m_options;
+
+    for (u8 ttl = options->m_start_hop; ttl <= options->m_max_hop; ++ttl) {
+        printf("%2d  ", ttl);
+        u32 query_count = 0;
+
+        while (query_count < options->m_queries) {
+            for (u8 i = 0; i < options->m_simultaneous && query_count < options->m_queries; ++i) {
+                if (send_request(ttl) == FT_FAILURE) {
+                    return FT_FAILURE;
+                }
+                ++query_count;
+            }
+
+            /* Wait for response */
+            enum e_Response response = wait_responses();
+
+            if (response == RESPONSE_SUCCESS) {
+                break;
+            } else if (response == RESPONSE_TIMEOUT) {
+                // log_info("Timeout");
+                printf("*  ");
+            } else if (response == RESPONSE_ERROR) {
+                return FT_FAILURE;
+            }
+        }
+        printf("\n");
+    }
+
+    return FT_SUCCESS;
+}
+
+static
+void _cleanup(void) {
+    destroy_sockets();
+    reset_signals();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -45,6 +91,9 @@ int main(const int arg_count, char* const* arg_value) {
 
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);
+    } else if (_traceroute() == FT_FAILURE) {
+        _cleanup();
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

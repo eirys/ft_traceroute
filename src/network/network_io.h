@@ -57,7 +57,7 @@ typedef struct s_PacketInfo {
     #define m_udp_size          __size.__udp_size
 
     struct timeval          m_timestamp;    /* Timestamp of the packet */
-    struct sockaddr_in      m_src_addr;     /* Source address */
+    struct sockaddr_in      m_addr;         /* Associated address */
 } PacketInfo;
 
 /* -------------------------------------------------------------------------- */
@@ -76,11 +76,22 @@ union u_InPacket {
 };
 
 /* -------------------------------------------------------------------------- */
+
+enum e_Response {
+    RESPONSE_ONGOING,
+    RESPONSE_TIMEOUT,
+    RESPONSE_IGNORE,
+    RESPONSE_SUCCESS,
+    RESPONSE_ERROR
+};
+
+/* -------------------------------------------------------------------------- */
 /*                                   GLOBALS                                  */
 /* -------------------------------------------------------------------------- */
 
 extern pid_t                g_pid;
 extern union u_OutPacket    g_outpacket;
+extern PacketInfo           g_outpacket_info;
 
 /* -------------------------------------------------------------------------- */
 /*                                 PROTOTYPES                                 */
@@ -89,11 +100,11 @@ extern union u_OutPacket    g_outpacket;
 /**
  * @brief Send an ICMP echo request to the given destination.
  */
-FT_RESULT   send_request(void);
+FT_RESULT   send_request(const u8 ttl);
 
 /**
  * @brief Wait for an ICMP response.
  */
-FT_RESULT   wait_responses(void);
+enum e_Response   wait_responses(void);
 
 #endif /* NETWORK_IO_H */
