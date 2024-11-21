@@ -8,6 +8,7 @@
 #include "stats.h"
 #include "raw_socket.h"
 #include "wrapper.h"
+#include "stats.h"
 #include "log.h"
 
 /* --------------------------------- STATIC --------------------------------- */
@@ -61,15 +62,18 @@ FT_RESULT _filter_icmpv4(const Packet* packet, PacketInfo* packet_info) {
         return FT_FAILURE;
     }
 
-    /* Not corresponding */
-    if (packet->m_icmp.m_header.un.echo.id != g_pid
-        || packet->m_icmp.m_header.un.echo.sequence != g_stats.m_packet_sent) { //TODO
-        log_debug("_filter_icmpv4", "packet received is not for us");
-        return FT_FAILURE;
-    }
-
     packet_info->m_ip_size = ip_size;
     packet_info->m_icmp_size = packet_info->m_size - ip_size;
+
+    /* Not corresponding */
+    // const Packet* udp_packet = (const Packet*)packet->m_icmp.m_payload;
+        //TODO
+
+    // if (udp_packet->m_udp.m_header.uh_sport != g_outpacket.m_packet.m_udp.m_header.uh_sport ||
+    //     udp_packet->m_udp.m_header.uh_dport != g_outpacket.m_packet.m_udp.m_header.uh_dport) {
+    //     log_debug("_filter_icmpv4", "packet received is not for us");
+    //     return FT_FAILURE;
+    // }
 
     return FT_SUCCESS;
 }
@@ -88,25 +92,6 @@ double _compute_rtt(const struct timeval* t1, const struct timeval* t2) {
     return (seconds * (double)1e3 + microseconds / (double)1e3);
 }
 
-// static
-// void _process_reply(const Packet* packet) {
-//     printf("icmp_seq=%u ttl=%d", packet->m_icmp_header->un.echo.sequence, packet->m_ip_header->ttl);
-
-//     if (packet->m_icmp_size >= sizeof(struct timeval)) {
-//         const struct timeval*   sent_tv = (struct timeval*)packet->m_icmp_payload;
-//         const double            rtt = _compute_rtt(&packet->m_timestamp, sent_tv);
-
-//         printf(" time=%.3f ms", rtt);
-
-//         g_stats.m_packet_received += 1;
-//         g_stats.m_min_rtt = MIN(rtt, g_stats.m_min_rtt);
-//         g_stats.m_max_rtt = MAX(rtt, g_stats.m_max_rtt);
-//         g_stats.m_total_rtt += rtt;
-//         g_stats.m_total_rtt_square += rtt * rtt;
-//     }
-//     printf("\n");
-// }
-
 static
 void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
     bool is_numeric = g_arguments.m_options.m_numeric;
@@ -114,30 +99,38 @@ void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
     char src_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &packet_info->m_addr.sin_addr, src_ip, INET_ADDRSTRLEN);
 
-    char src_host[NI_MAXHOST];
-    if (!is_numeric && Getnameinfo((struct sockaddr*)&packet_info->m_addr, sizeof(struct sockaddr_in), src_host, NI_MAXHOST, NULL, 0, NI_NAMEREQD) == FT_SUCCESS) {
-        printf("%s (%s)  ", src_host, src_ip);
-    } else {
+    if (is_numeric) {
         printf("%s  ", src_ip);
+    } else {
+        char src_host[NI_MAXHOST];
+
+        if (Getnameinfo((struct sockaddr*)&packet_info->m_addr, sizeof(struct sockaddr_in), src_host, NI_MAXHOST, NULL, 0, NI_NAMEREQD) == FT_SUCCESS) {
+            printf("%s (%s)  ", src_host, src_ip);
+        } else {
+            printf("%s (%s)  ", src_ip, src_ip);
+        }
     }
-}
 
-static
-enum e_Response _keep_going(const Packet* packet, const PacketInfo* packet_info) {
-    return RESPONSE_ONGOING;
-}
-
-static
-enum e_Response _reach_destination(const Packet* packet, const PacketInfo* packet_info) {
-    return RESPONSE_SUCCESS;
+    /* Update source */
+    g_raw_socket.m_ipv4.s_addr = packet_info->m_addr.sin_addr.s_addr;
 }
 
 static
 enum e_Response _process_message(const Packet* packet, const PacketInfo* packet_info) {
-    if (packet->m_icmp.m_header.type == ICMP_DEST_UNREACH)
-        return _reach_destination(packet, packet_info);
-    else if (packet->m_icmp.m_header.type == ICMP_TIME_EXCEEDED)
-        return _keep_going(packet, packet_info);
+    if (packet->m_icmp.m_header.type == ICMP_DEST_UNREACH) {
+        log_debug("_process_message", "Destination reached");
+        return RESPONSE_SUCCESS;
+    } else if (packet->m_icmp.m_header.type == ICMP_TIME_EXCEEDED && packet->m_icmp.m_header.code == ICMP_TIMXCEED_INTRANS) {
+        /* New address */
+        if (g_raw_socket.m_ipv4.s_addr != packet_info->m_addr.sin_addr.s_addr) {
+            _translate_source(packet, packet_info);
+        }
+
+        const double rtt = _compute_rtt(&packet_info->m_timestamp, &g_outpacket_info.m_timestamp);
+        printf("%.3f ms  ", rtt);
+
+        return RESPONSE_ONGOING;
+    }
     return RESPONSE_IGNORE;
 }
 

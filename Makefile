@@ -25,7 +25,11 @@ INC_SUBDIRS	:=	$(addprefix $(SRC_DIR)/,$(SUBDIRS))
 SRC_FILES	:=	main.c \
 				$(NETWORK_DIR)/send_request.c \
 				$(NETWORK_DIR)/wait_response.c \
+				$(NETWORK_DIR)/raw_socket.c \
 				$(INPUT_DIR)/options.c \
+				$(UTILS_DIR)/signal_handlers.c \
+				$(UTILS_DIR)/wrapper.c \
+				$(UTILS_DIR)/stats.c \
 				$(UTILS_DIR)/log.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
@@ -123,8 +127,8 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: graphics_permission
-# up: trace_output graphics_permission
+# up: graphics_permission
+up: trace_output graphics_permission
 	$(COMPOSE) up -d
 
 .PHONY: graphics_permission

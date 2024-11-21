@@ -10,6 +10,12 @@ static struct sigaction _old_sigint;
 
 /* -------------------------------------------------------------------------- */
 
+void reset_signals(void) {
+    if (Sigaction(SIGINT, &_old_sigint, NULL) == FT_FAILURE) {
+        log_error("failed to reset sigint");
+    }
+}
+
 /**
  * @brief Handler for SIGINT signal: stop the program gracefully.
  */
@@ -38,10 +44,4 @@ FT_RESULT set_signals(void) {
     }
 
     return FT_SUCCESS;
-}
-
-void reset_signals(void) {
-    if (Sigaction(SIGINT, &_old_sigint, NULL) == FT_FAILURE) {
-        log_error("failed to reset sigint");
-    }
 }

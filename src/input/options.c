@@ -10,7 +10,7 @@
 Arguments g_arguments = {
     .m_options.m_packet_size = UDP_PAYLOAD_SIZE,
     .m_options.m_queries = 3U,
-    .m_options.m_simultaneous = 1U,
+    .m_options.m_simultaneous = 16U,
     .m_options.m_timeout = 5U,
     .m_options.m_src_port = 4242U,
     .m_options.m_dest_port = 2424U,

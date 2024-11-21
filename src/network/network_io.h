@@ -14,7 +14,7 @@
 #define ICMP_HEADER_SIZE    8
 #define UDP_HEADER_SIZE     8
 
-#define ICMP_PAYLOAD_SIZE   (64 - ICMP_HEADER_SIZE)
+#define ICMP_PAYLOAD_SIZE   (64 + IP_HEADER_SIZE)
 #define UDP_PAYLOAD_SIZE    (40 - UDP_HEADER_SIZE)
 
 #define SEND_BUFFER_SIZE    1024
@@ -78,11 +78,11 @@ union u_InPacket {
 /* -------------------------------------------------------------------------- */
 
 enum e_Response {
-    RESPONSE_ONGOING,
-    RESPONSE_TIMEOUT,
-    RESPONSE_IGNORE,
-    RESPONSE_SUCCESS,
-    RESPONSE_ERROR
+    RESPONSE_ONGOING,   /* Received intermediate router response */
+    RESPONSE_TIMEOUT,   /* Timeout */
+    RESPONSE_IGNORE,    /* Received irrelevant message */
+    RESPONSE_SUCCESS,   /* Reached destination */
+    RESPONSE_ERROR      /* System error */
 };
 
 /* -------------------------------------------------------------------------- */

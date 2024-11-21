@@ -67,6 +67,7 @@ FT_RESULT create_sockets(const char* destination) {
 
     /* Open raw socket */
     g_raw_socket.m_fd = Socket(_destination_info->ai_family, SOCK_RAW, IPPROTO_ICMP);
+    g_raw_socket.m_ipv4.s_addr = INADDR_ANY;
 
     /* Open udp socket */
     g_udp_socket.m_fd = Socket(_destination_info->ai_family, SOCK_DGRAM, 0);
@@ -75,20 +76,12 @@ FT_RESULT create_sockets(const char* destination) {
         return _destroy_malformed_data();
     }
 
-    /* Convert binary IPv4 to string */
-    // char ip[INET_ADDRSTRLEN];
-    // inet_ntop(AF_INET, &g_raw_socket.m_ipv4->sin_addr, ip, INET_ADDRSTRLEN);
-    // g_raw_socket.m_ipv4_str = Strdup(ip);
-    // if (g_raw_socket.m_ipv4_str == NULL) {
-    //     return _destroy_malformed_data();
-    // }
-
     /* Remember destination IPv4 */
     g_udp_socket.m_ipv4 = ((struct sockaddr_in*)_destination_info->ai_addr)->sin_addr;
 
     /* IP Header: Tell the kernel that we build and include our own IP header */
-    const i32 option_value = 1;
-    setsockopt(g_udp_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
+    // const i32 option_value = 1;
+    // setsockopt(g_udp_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
 
     /* Bind udp socket source port */
     struct sockaddr_in source = {
@@ -96,7 +89,10 @@ FT_RESULT create_sockets(const char* destination) {
         .sin_port = htons(g_arguments.m_options.m_src_port),
         .sin_addr = { .s_addr = INADDR_ANY }
     };
-    bind(g_udp_socket.m_fd, (struct sockaddr*)&source, sizeof(source));
+
+    if (Bind(g_udp_socket.m_fd, (struct sockaddr*)&source, sizeof(source)) == FT_FAILURE) {
+        return _destroy_malformed_data();
+    }
 
     freeaddrinfo(_destination_info);
     _destination_info = NULL;

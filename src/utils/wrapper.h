@@ -22,6 +22,7 @@ int         Select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfd
 
 int         Socket(int domain, int type, int protocol);
 FT_RESULT   Close(int fd);
+FT_RESULT   Bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen);
 
 FT_RESULT   Sendto(int sockfd, const void* buf, u32 len, int flags, const struct sockaddr* dest_addr, socklen_t addrlen);
 ssize_t     Recvfrom(int sockfd, void* buf, u32 len, int flags, struct sockaddr* src_addr, socklen_t* addrlen);

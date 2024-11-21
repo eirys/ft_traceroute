@@ -5,6 +5,7 @@
 #include "network_io.h"
 #include "log.h"
 #include "raw_socket.h"
+#include "stats.h"
 #include "options.h"
 #include "signal_handlers.h"
 
@@ -33,6 +34,12 @@ FT_RESULT _check_privileges() {
 }
 
 static
+void _cleanup(void) {
+    destroy_sockets();
+    reset_signals();
+}
+
+static
 FT_RESULT _traceroute() {
     /* Setup */
     if (create_sockets(g_arguments.m_destination) == FT_FAILURE) {
@@ -41,40 +48,37 @@ FT_RESULT _traceroute() {
 
     const Options* options = &g_arguments.m_options;
 
-    for (u8 ttl = options->m_start_hop; ttl <= options->m_max_hop; ++ttl) {
-        printf("%2d  ", ttl);
+    for (u8 ttl = options->m_start_hop; ttl < options->m_max_hop; ++ttl) {
+        printf("%2d  ", (u32)ttl);
+
         u32 query_count = 0;
 
-        while (query_count < options->m_queries) {
-            for (u8 i = 0; i < options->m_simultaneous && query_count < options->m_queries; ++i) {
+        for (u8 i = 0; i < options->m_simultaneous; ++i) {
+            if (query_count < options->m_queries) {
                 if (send_request(ttl) == FT_FAILURE) {
                     return FT_FAILURE;
                 }
+                // ++g_stats.m_packet_sent; // unused
                 ++query_count;
             }
+        }
 
-            /* Wait for response */
+        for (u32 i = 0; i < options->m_queries; ++i) {
             enum e_Response response = wait_responses();
 
             if (response == RESPONSE_SUCCESS) {
                 break;
             } else if (response == RESPONSE_TIMEOUT) {
-                // log_info("Timeout");
-                printf("*  ");
+                printf("* ");
             } else if (response == RESPONSE_ERROR) {
                 return FT_FAILURE;
             }
         }
         printf("\n");
     }
+    _cleanup();
 
     return FT_SUCCESS;
-}
-
-static
-void _cleanup(void) {
-    destroy_sockets();
-    reset_signals();
 }
 
 /* -------------------------------------------------------------------------- */

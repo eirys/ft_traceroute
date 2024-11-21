@@ -80,8 +80,8 @@ int Select(
     int fds = select(nfds, readfds, writefds, exceptfds, timeout);
     if (fds == -1 && errno != EINTR) {
         _error("select", "failed to listen on file descriptor");
-    } else if (fds == -1 && errno == EINTR) {
-        return INT32_MAX; /* Fictive value */
+    // } else if (fds == -1 && errno == EINTR) {
+    //     return INT32_MAX; /* Fictive value */
     }
     return fds;
 }
@@ -96,6 +96,14 @@ int Socket(int domain, int type, int protocol) {
 FT_RESULT Close(int fd) {
     if (close(fd) == -1) {
         _error("close", "failed to close socket");
+        return FT_FAILURE;
+    }
+    return FT_SUCCESS;
+}
+
+FT_RESULT Bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen) {
+    if (bind(sockfd, addr, addrlen) == -1) {
+        _error("bind", "failed to bind socket");
         return FT_FAILURE;
     }
     return FT_SUCCESS;
