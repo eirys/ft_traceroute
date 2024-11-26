@@ -18,6 +18,19 @@ static struct timeval   _timeout;
 
 /* -------------------------------------------------------------------------- */
 
+#define _LOG 1
+
+#include <stdarg.h> /* va_list */
+static
+void display(const char* format, ...) {
+#if _LOG
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+#endif
+}
+
 /**
  * @brief Receive an IPv4 packet.
  */
@@ -43,37 +56,51 @@ FT_RESULT _receive_packet(u8* buffer, PacketInfo* packet_info) {
  * @brief Filter properly formed ICMPv4 packets that correspond to the sent packet.
  */
 static
-FT_RESULT _filter_icmpv4(const Packet* packet, PacketInfo* packet_info) {
+FT_RESULT _filter_icmpv4(u8* raw, Packet* packet, PacketInfo* packet_info) {
+    packet->m_ip_header = (struct iphdr*)raw;
+
     if (packet_info->m_addr.sin_family != AF_INET) {
         log_debug("_filter_icmpv4", "not ipv4");
         return FT_FAILURE;
     }
 
     /* Not ICMPv4 */
-    if (packet->m_ip_header.protocol != IPPROTO_ICMP) {
+    if (packet->m_ip_header->protocol != IPPROTO_ICMP) {
         log_debug("_filter_icmpv4", "not an ICMP message");
         return FT_FAILURE;
     }
 
+    u32 ip_size = packet->m_ip_header->ihl * sizeof(u32);
+    packet_info->m_ip_size = ip_size;
+    packet_info->m_icmp_size = packet_info->m_size - ip_size;
+
     /* Incomplete packet_info */
-    const u32 ip_size = packet->m_ip_header.ihl * sizeof(u32);
     if (packet_info->m_icmp_size - ip_size < ICMP_HEADER_SIZE) {
         log_debug("_filter_icmpv4", "packet malformed");
         return FT_FAILURE;
     }
 
-    packet_info->m_ip_size = ip_size;
-    packet_info->m_icmp_size = packet_info->m_size - ip_size;
+    packet->m_icmp.m_header = (struct icmphdr*)(raw + ip_size);
+    packet->m_icmp.m_udp_ip = (struct iphdr*)(packet->m_icmp.m_header + ICMP_HEADER_SIZE);
 
-    /* Not corresponding */
-    // const Packet* udp_packet = (const Packet*)packet->m_icmp.m_payload;
-        //TODO
+    /* Content is not UDP */
+    if (packet->m_icmp.m_udp_ip->protocol != IPPROTO_UDP) {
+        log_debug("_filter_icmpv4", "not an UDP message");
+        return FT_FAILURE;
+    }
 
-    // if (udp_packet->m_udp.m_header.uh_sport != g_outpacket.m_packet.m_udp.m_header.uh_sport ||
-    //     udp_packet->m_udp.m_header.uh_dport != g_outpacket.m_packet.m_udp.m_header.uh_dport) {
-    //     log_debug("_filter_icmpv4", "packet received is not for us");
-    //     return FT_FAILURE;
-    // }
+    ip_size = packet->m_icmp.m_udp_ip->ihl * sizeof(u32);
+    packet->m_icmp.m_udp_data = (u8*)(packet->m_icmp.m_udp_ip + ip_size);
+
+    /* Check correspondance */
+    const struct udphdr* udp_copy = (struct udphdr*)(packet->m_icmp.m_udp_data);
+
+    if (ntohs(udp_copy->uh_sport) != g_arguments.m_options.m_src_port ||
+        ntohs(udp_copy->uh_dport) != g_arguments.m_options.m_dest_port) {
+        return FT_FAILURE;
+    }
+
+    log_info("ici");
 
     return FT_SUCCESS;
 }
@@ -100,14 +127,14 @@ void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
     inet_ntop(AF_INET, &packet_info->m_addr.sin_addr, src_ip, INET_ADDRSTRLEN);
 
     if (is_numeric) {
-        printf("%s  ", src_ip);
+        display("%s  ", src_ip);
     } else {
         char src_host[NI_MAXHOST];
 
         if (Getnameinfo((struct sockaddr*)&packet_info->m_addr, sizeof(struct sockaddr_in), src_host, NI_MAXHOST, NULL, 0, NI_NAMEREQD) == FT_SUCCESS) {
-            printf("%s (%s)  ", src_host, src_ip);
+            display("%s (%s)  ", src_host, src_ip);
         } else {
-            printf("%s (%s)  ", src_ip, src_ip);
+            display("%s (%s)  ", src_ip, src_ip);
         }
     }
 
@@ -117,17 +144,17 @@ void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
 
 static
 enum e_Response _process_message(const Packet* packet, const PacketInfo* packet_info) {
-    if (packet->m_icmp.m_header.type == ICMP_DEST_UNREACH) {
-        log_debug("_process_message", "Destination reached");
+    const double rtt = _compute_rtt(&packet_info->m_timestamp, &g_outpacket_info.m_timestamp);
+    display("%.3f ms  ", rtt);
+
+    if (packet->m_icmp.m_header->type == ICMP_DEST_UNREACH) {
+        // log_debug("_process_message", "Destination reached");
         return RESPONSE_SUCCESS;
-    } else if (packet->m_icmp.m_header.type == ICMP_TIME_EXCEEDED && packet->m_icmp.m_header.code == ICMP_TIMXCEED_INTRANS) {
+    } else if (packet->m_icmp.m_header->type == ICMP_TIME_EXCEEDED && packet->m_icmp.m_header->code == ICMP_TIMXCEED_INTRANS) {
         /* New address */
         if (g_raw_socket.m_ipv4.s_addr != packet_info->m_addr.sin_addr.s_addr) {
             _translate_source(packet, packet_info);
         }
-
-        const double rtt = _compute_rtt(&packet_info->m_timestamp, &g_outpacket_info.m_timestamp);
-        printf("%.3f ms  ", rtt);
 
         return RESPONSE_ONGOING;
     }
@@ -146,7 +173,8 @@ void _reset_timeout() {
 }
 
 enum e_Response wait_responses() {
-    union u_InPacket buffer;
+    // union u_InPacket buffer;
+    u8 buffer[RECV_BUF_SIZE];
 
     FD_ZERO(&_listen_fds);
     FD_SET(g_raw_socket.m_fd, &_listen_fds);
@@ -157,19 +185,20 @@ enum e_Response wait_responses() {
         if (fds == -1) {
             return RESPONSE_ERROR;
         } else if (fds == 0) { /* Timeout */
+            display("* ");
             return RESPONSE_TIMEOUT;
         }
 
-        const Packet*   packet = &buffer.m_packet;
-        PacketInfo      packet_info;
+        PacketInfo  packet_info;
+        Packet      packet;
 
-        if (_receive_packet(buffer.m_raw, &packet_info) == FT_FAILURE)
+        if (_receive_packet(buffer, &packet_info) == FT_FAILURE)
             return RESPONSE_ERROR;
 
-        if (_filter_icmpv4(packet, &packet_info) == FT_FAILURE)
+        if (_filter_icmpv4(buffer, &packet, &packet_info) == FT_FAILURE)
             continue;
 
-        enum e_Response response = _process_message(packet, &packet_info);
+        enum e_Response response = _process_message(&packet, &packet_info);
 
         if (response != RESPONSE_IGNORE)
             return response;

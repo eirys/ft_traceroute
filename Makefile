@@ -27,6 +27,7 @@ SRC_FILES	:=	main.c \
 				$(NETWORK_DIR)/wait_response.c \
 				$(NETWORK_DIR)/raw_socket.c \
 				$(INPUT_DIR)/options.c \
+				$(INPUT_DIR)/callbacks.c \
 				$(UTILS_DIR)/signal_handlers.c \
 				$(UTILS_DIR)/wrapper.c \
 				$(UTILS_DIR)/stats.c \

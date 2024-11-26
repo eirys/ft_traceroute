@@ -14,10 +14,9 @@
 #define ICMP_HEADER_SIZE    8
 #define UDP_HEADER_SIZE     8
 
-#define ICMP_PAYLOAD_SIZE   (64 + IP_HEADER_SIZE)
+#define ICMP_COPY_SIZE      64 /* Copy 64 bytes of the original packet */
 #define UDP_PAYLOAD_SIZE    (40 - UDP_HEADER_SIZE)
 
-#define SEND_BUFFER_SIZE    1024
 #define RECV_BUF_SIZE       32768 /* Large to handle replies overflows */
 
 /* -------------------------------------------------------------------------- */
@@ -28,15 +27,17 @@
  * @brief Full packet structure.
  */
 typedef struct s_Packet {
-    struct iphdr            m_ip_header;
+    struct iphdr*           m_ip_header;
     union {
         struct {
-            struct icmphdr  m_header;
-            u8              m_payload[ICMP_PAYLOAD_SIZE];
+            struct icmphdr* m_header;
+            #define m_icmp_unused  m_header.un.gateway
+            struct iphdr*   m_udp_ip;
+            void*           m_udp_data;//[ICMP_COPY_SIZE];
         } __icmp;
         struct {
-            struct udphdr   m_header;
-            u8              m_payload[UDP_PAYLOAD_SIZE];
+            struct udphdr*  m_header;
+            u8*             m_payload;
         } __udp;
     } __un;
     #define m_icmp  __un.__icmp
@@ -50,8 +51,8 @@ typedef struct s_PacketInfo {
     u32                     m_size;         /* Size of the packet */
     u32                     m_ip_size;      /* Size of the IP header */
     union {
-        u32 __icmp_size;    /* Size of the ICMP header */
-        u32 __udp_size;     /* Size of the UDP header */
+        u32 __icmp_size;    /* Size of the ICMP content */
+        u32 __udp_size;     /* Size of the UDP content */
     } __size;
     #define m_icmp_size         __size.__icmp_size
     #define m_udp_size          __size.__udp_size
@@ -59,21 +60,6 @@ typedef struct s_PacketInfo {
     struct timeval          m_timestamp;    /* Timestamp of the packet */
     struct sockaddr_in      m_addr;         /* Associated address */
 } PacketInfo;
-
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Buffer structure: either raw buffer or packet structure.
- */
-union u_OutPacket {
-    u8      m_raw[SEND_BUFFER_SIZE];
-    Packet  m_packet;
-};
-
-union u_InPacket {
-    u8      m_raw[RECV_BUF_SIZE];
-    Packet  m_packet;
-};
 
 /* -------------------------------------------------------------------------- */
 
@@ -90,7 +76,7 @@ enum e_Response {
 /* -------------------------------------------------------------------------- */
 
 extern pid_t                g_pid;
-extern union u_OutPacket    g_outpacket;
+extern u8*                  g_outpacket;
 extern PacketInfo           g_outpacket_info;
 
 /* -------------------------------------------------------------------------- */
@@ -98,13 +84,23 @@ extern PacketInfo           g_outpacket_info;
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Send an ICMP echo request to the given destination.
+ * @brief Send an UDP packet with a specific TTL.
  */
-FT_RESULT   send_request(const u8 ttl);
+FT_RESULT       send_request(const u8 ttl);
 
 /**
  * @brief Wait for an ICMP response.
  */
-enum e_Response   wait_responses(void);
+enum e_Response wait_responses(void);
+
+/**
+ * @brief Allocate a buffer for the sending packet.
+ */
+FT_RESULT       allocate_buffer(void);
+
+/**
+ * @brief Deallocate the sending buffer.
+ */
+void            deallocate_buffer(void);
 
 #endif /* NETWORK_IO_H */

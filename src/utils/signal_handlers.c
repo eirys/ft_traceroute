@@ -3,6 +3,7 @@
 #include "wrapper.h"
 #include "raw_socket.h"
 #include "log.h"
+#include "network_io.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -22,6 +23,7 @@ void reset_signals(void) {
 void stop(__attribute__((unused)) int signal) {
     reset_signals();
     destroy_sockets();
+    deallocate_buffer();
     exit(EXIT_SUCCESS);
 }
 

@@ -8,7 +8,6 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_Options {
-    u32     m_packet_size;  /* Packet size, set after destination */
     u32     m_queries;      /* -q --queries : Number of queries/probes sent */
     u32     m_simultaneous; /* -N --sim-queries : Number of simultaneous probes */
     u32     m_timeout;      /* -w --wait : Timeout for a probe */
@@ -23,7 +22,8 @@ typedef struct s_Options {
 
 typedef struct s_Arguments {
     Options     m_options;
-    char*       m_destination;
+    char*       m_destination;  /* Destination hostname / IP */
+    u32         m_packet_size;  /* Packet size, set after destination */
 } Arguments;
 
 /* -------------------------------------------------------------------------- */

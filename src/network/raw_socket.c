@@ -79,9 +79,8 @@ FT_RESULT create_sockets(const char* destination) {
     /* Remember destination IPv4 */
     g_udp_socket.m_ipv4 = ((struct sockaddr_in*)_destination_info->ai_addr)->sin_addr;
 
-    /* IP Header: Tell the kernel that we build and include our own IP header */
-    // const i32 option_value = 1;
-    // setsockopt(g_udp_socket.m_fd, IPPROTO_IP, IP_HDRINCL, &option_value, sizeof(option_value));
+    /* Set TOS */
+    setsockopt(g_udp_socket.m_fd, IPPROTO_IP, IP_TOS, &g_arguments.m_options.m_tos, sizeof(u8));
 
     /* Bind udp socket source port */
     struct sockaddr_in source = {

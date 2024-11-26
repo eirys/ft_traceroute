@@ -1,6 +1,8 @@
 #include <stdlib.h> /* exit */
 #include <unistd.h> /* getpid */
 #include <stdio.h> /* printf */
+#include <sys/param.h> /* MAX */
+#include <arpa/inet.h> /* inet_ntoa */
 
 #include "network_io.h"
 #include "log.h"
@@ -15,12 +17,37 @@ pid_t       g_pid;
 
 /* -------------------------------------------------------------------------- */
 
+static void deb() {
+    printf(" packet len = %d\n", g_arguments.m_packet_size);
+    printf(" queries = %d\n", g_arguments.m_options.m_queries);
+    // printf(" simultaneous = %d\n", g_arguments.m_options.m_simultaneous); // TODO
+    printf(" wait = %d\n", g_arguments.m_options.m_timeout);
+    printf(" sport = %d\n", g_arguments.m_options.m_src_port);
+    printf(" port = %d\n", g_arguments.m_options.m_dest_port);
+    printf(" tos = %d\n", g_arguments.m_options.m_tos);
+    printf(" max hops = %d\n", g_arguments.m_options.m_max_hop);
+    printf(" first hop = %d\n", g_arguments.m_options.m_start_hop);
+    printf(" numeric = %d\n", g_arguments.m_options.m_numeric);
+    printf(" help = %d\n", g_arguments.m_options.m_help);
+    printf(" destination = %s\n", g_arguments.m_destination);
+}
+
 static
 void _show_help(const char* program_name) {
-    log_info("Usage: %s [OPTION] <destination>", program_name);
-    log_info("\n"); // TODO description
+    log_info("Usage: %s [OPTION] <destination> [packet_len]", program_name);
+    log_info("Trace the route to a destination by sending UDP packets with increasing TTLs");
     log_info("Options:");
-    log_info("  -?, --help                  Display this help and exit");
+    log_info("  packet_len              Size of the packet (default: 60)\n");
+    log_info("  --help                  Display this help and exit");
+    log_info("  -q, --queries <n>       Number of queries/probes sent (default: 3)");
+    // log_info("  -N, --sim-queries <n>   Number of simultaneous probes (default: 16)"); // TODO
+    log_info("  -w, --wait <n>          Timeout for a probe (default: 5)");
+    log_info("  --sport <n>             Source port (default: 0)");
+    log_info("  -p, --port <n>          Destination port (default: 32768)");
+    log_info("  -t, --tos <n>           Type of Service (default: 0)");
+    log_info("  -m, --max-hops <n>      Max TTL sent (default: 30)");
+    log_info("  -f, --first-hop <n>     First TTL sent (default: 1)");
+    log_info("  -n, --numeric           Numeric output only");
 }
 
 static
@@ -35,45 +62,62 @@ FT_RESULT _check_privileges() {
 
 static
 void _cleanup(void) {
-    destroy_sockets();
+    deallocate_buffer();
     reset_signals();
+    destroy_sockets();
 }
 
+/* -------------------------------------------------------------------------- */
+
+//TODO: multithreading for simultaneous probes
 static
 FT_RESULT _traceroute() {
+    // return FT_SUCCESS;
     /* Setup */
     if (create_sockets(g_arguments.m_destination) == FT_FAILURE) {
         return FT_FAILURE;
     }
+    if (set_signals() == FT_FAILURE) {
+        return FT_FAILURE;
+    }
+    if (allocate_buffer() == FT_FAILURE) {
+        return FT_FAILURE;
+    }
+
+    printf("ft_traceroute to %s (%s), %u hops max, %d byte packets\n",
+        g_arguments.m_destination,
+        inet_ntoa(g_udp_socket.m_ipv4),
+        g_arguments.m_options.m_max_hop,
+        g_arguments.m_packet_size + IP_HEADER_SIZE + UDP_HEADER_SIZE);
 
     const Options* options = &g_arguments.m_options;
+    u32 successes = 0U;
 
     for (u8 ttl = options->m_start_hop; ttl < options->m_max_hop; ++ttl) {
         printf("%2d  ", (u32)ttl);
 
-        u32 query_count = 0;
-
-        for (u8 i = 0; i < options->m_simultaneous; ++i) {
-            if (query_count < options->m_queries) {
-                if (send_request(ttl) == FT_FAILURE) {
-                    return FT_FAILURE;
-                }
-                // ++g_stats.m_packet_sent; // unused
-                ++query_count;
-            }
-        }
-
         for (u32 i = 0; i < options->m_queries; ++i) {
+            if (send_request(ttl) == FT_FAILURE) {
+                return FT_FAILURE;
+            }
+
+            log_debug("_traceroute", "waiting for response");
+
             enum e_Response response = wait_responses();
 
             if (response == RESPONSE_SUCCESS) {
-                break;
-            } else if (response == RESPONSE_TIMEOUT) {
-                printf("* ");
+                ++successes;
             } else if (response == RESPONSE_ERROR) {
                 return FT_FAILURE;
             }
+
+            fflush(stdout);
+
+            if (successes == options->m_queries) {
+                return FT_SUCCESS;
+            }
         }
+
         printf("\n");
     }
     _cleanup();
@@ -90,6 +134,7 @@ int main(const int arg_count, char* const* arg_value) {
     if (retrieve_arguments(arg_count, arg_value) == FT_FAILURE) {
         return EXIT_FAILURE;
     }
+    deb();
 
     g_pid = getpid() & 0xFFFF | 0x8000; /* Retrieve the last 16 bits of the PID and set the most significant bit to 1 */
 
