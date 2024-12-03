@@ -11,16 +11,18 @@
 /* --------------------------------- GLOBALS -------------------------------- */
 
 Arguments g_arguments = {
-    .m_options.m_queries = 3U,
-    .m_options.m_simultaneous = 16U,
-    .m_options.m_timeout = 5U,
-    .m_options.m_src_port = UINT16_MAX,
-    .m_options.m_dest_port = 0x8000 + 666U,
-    .m_options.m_tos = 0x0,
-    .m_options.m_max_hop = 30U,
-    .m_options.m_start_hop = 1U,
-    .m_options.m_numeric = false,
-    .m_options.m_help = false,
+    .m_options = {
+        .m_queries = 3U,
+        .m_simultaneous = 16U,
+        .m_timeout = 5.0f,
+        .m_src_port = 0U,
+        .m_dest_port = 0x8000 + 666U,
+        .m_tos = 0x0,
+        .m_max_hop = 30U,
+        .m_start_hop = 1U,
+        .m_numeric = false,
+        .m_help = false,
+    },
     .m_packet_size = UDP_PAYLOAD_SIZE,
     .m_destination = NULL
 };
@@ -184,9 +186,9 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
                 else if (long_option[LONG_OPTION_NUMERIC]) { _enable_flag(&options->m_numeric); }
                 else if (long_option[LONG_OPTION_QUERIES]) { if (_set_flag((void*)&options->m_queries, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_SIMULTANEOUS]) { if (_set_flag((void*)&options->m_simultaneous, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; } }
-                else if (long_option[LONG_OPTION_WAIT]) { if (_set_flag((void*)&options->m_timeout, &process_uint, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
-                else if (long_option[LONG_OPTION_SPORT]) { if (_set_flag((void*)&options->m_src_port, &process_ushort, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
-                else if (long_option[LONG_OPTION_PORT]) { if (_set_flag((void*)&options->m_dest_port, &process_ushort, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
+                else if (long_option[LONG_OPTION_WAIT]) { if (_set_flag((void*)&options->m_timeout, &process_float, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
+                else if (long_option[LONG_OPTION_SPORT]) { if (_set_flag((void*)&options->m_src_port, &process_ushort, &extra_default_sport, NULL) == FT_FAILURE) { return FT_FAILURE; } }
+                else if (long_option[LONG_OPTION_PORT]) { if (_set_flag((void*)&options->m_dest_port, &process_ushort, &extra_over_zero, "can't set destination port to 0") == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_TOS]) { if (_set_flag((void*)&options->m_tos, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_MAX_HOPS]) { if (_set_flag((void*)&options->m_max_hop, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_FIRST_HOP]) { if (_set_flag((void*)&options->m_start_hop, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
@@ -199,8 +201,8 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
             case FLAG_N:        _enable_flag(&options->m_numeric); break;
             case FLAG_Q:        if (_set_flag((void*)&options->m_numeric, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_N_CAP:    if (_set_flag((void*)&options->m_simultaneous, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; }; break;
-            case FLAG_W:        if (_set_flag((void*)&options->m_timeout, &process_uint, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
-            case FLAG_P:        if (_set_flag((void*)&options->m_dest_port, &process_ushort, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
+            case FLAG_W:        if (_set_flag((void*)&options->m_timeout, &process_float, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
+            case FLAG_P:        if (_set_flag((void*)&options->m_dest_port, &process_ushort, &extra_over_zero, "can't set destination port to 0") == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_T:        if (_set_flag((void*)&options->m_tos, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_M:        if (_set_flag((void*)&options->m_max_hop, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_F:        if (_set_flag((void*)&options->m_start_hop, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
@@ -229,19 +231,19 @@ FT_RESULT retrieve_arguments(const int arg_count, char* const* arg_values) {
         log_error("too many arguments (use flag `--help` for indications)");
         return FT_FAILURE;
     } else if (optind + 1 < arg_count) {
-        if (process_uint(arg_values[optind + 1], &g_arguments.m_packet_size, NULL, NULL) == FT_FAILURE) {
+        if (process_uint(arg_values[optind + 1], &g_arguments.m_packet_size, extra_default_len, NULL) == FT_FAILURE) {
             return FT_FAILURE;
         }
-        g_arguments.m_packet_size = MAX(g_arguments.m_packet_size, 0);
     } else if (g_arguments.m_destination == NULL) {
         log_error("no destination provided (use flag `--help` for indications)");
         return FT_FAILURE;
     }
 
     /* Extra checks */
-    if (g_arguments.m_options.m_src_port == UINT16_MAX) {
+    if (g_arguments.m_options.m_src_port == 0U) {
         g_arguments.m_options.m_src_port = g_pid;
     }
+
     if (g_arguments.m_options.m_start_hop > g_arguments.m_options.m_max_hop) {
         log_error("first hop greater than max hops");
         return FT_FAILURE;

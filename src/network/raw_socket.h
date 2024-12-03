@@ -9,7 +9,6 @@
 /* -------------------------------------------------------------------------- */
 
 typedef struct s_SocketInfo {
-    // void*                   m_data;         /* IPv4 if raw socket */
     struct in_addr          m_ipv4;         /* IPv4 address */
     int                     m_fd;           /* File descriptor */
 } SocketInfo;

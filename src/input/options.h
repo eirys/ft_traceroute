@@ -10,7 +10,7 @@
 typedef struct s_Options {
     u32     m_queries;      /* -q --queries : Number of queries/probes sent */
     u32     m_simultaneous; /* -N --sim-queries : Number of simultaneous probes */
-    u32     m_timeout;      /* -w --wait : Timeout for a probe */
+    f32     m_timeout;        /* -w --wait : Timeout for a probe */
     u16     m_src_port;     /* --sport : Source port */
     u16     m_dest_port;    /* -p --port : Destination port */
     u8      m_tos;          /* -t --tos : Type of Service */

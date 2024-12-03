@@ -80,8 +80,6 @@ int Select(
     int fds = select(nfds, readfds, writefds, exceptfds, timeout);
     if (fds == -1 && errno != EINTR) {
         _error("select", "failed to listen on file descriptor");
-    // } else if (fds == -1 && errno == EINTR) {
-    //     return INT32_MAX; /* Fictive value */
     }
     return fds;
 }

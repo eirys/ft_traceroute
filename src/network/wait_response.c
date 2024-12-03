@@ -5,31 +5,9 @@
 #include <stdio.h> /* printf */
 
 #include "options.h"
-#include "stats.h"
 #include "raw_socket.h"
 #include "wrapper.h"
-#include "stats.h"
 #include "log.h"
-
-/* --------------------------------- STATIC --------------------------------- */
-
-static fd_set           _listen_fds;
-static struct timeval   _timeout;
-
-/* -------------------------------------------------------------------------- */
-
-#define _LOG 1
-
-#include <stdarg.h> /* va_list */
-static
-void display(const char* format, ...) {
-#if _LOG
-    va_list args;
-    va_start(args, format);
-    vprintf(format, args);
-    va_end(args);
-#endif
-}
 
 /**
  * @brief Receive an IPv4 packet.
@@ -57,12 +35,19 @@ FT_RESULT _receive_packet(u8* buffer, PacketInfo* packet_info) {
  */
 static
 FT_RESULT _filter_icmpv4(u8* raw, Packet* packet, PacketInfo* packet_info) {
-    packet->m_ip_header = (struct iphdr*)raw;
-
+    /* Not IPv4 */
     if (packet_info->m_addr.sin_family != AF_INET) {
         log_debug("_filter_icmpv4", "not ipv4");
         return FT_FAILURE;
     }
+
+    /* Incomplete IPv4 header */
+    if (packet_info->m_size < IP_HEADER_SIZE) {
+        log_debug("_filter_icmpv4", "packet malformed (ip header incomplete)");
+        return FT_FAILURE;
+    }
+
+    packet->m_ip_header = (struct iphdr*)raw;
 
     /* Not ICMPv4 */
     if (packet->m_ip_header->protocol != IPPROTO_ICMP) {
@@ -70,37 +55,47 @@ FT_RESULT _filter_icmpv4(u8* raw, Packet* packet, PacketInfo* packet_info) {
         return FT_FAILURE;
     }
 
-    u32 ip_size = packet->m_ip_header->ihl * sizeof(u32);
+    const u32 ip_size = packet->m_ip_header->ihl * sizeof(u32);
     packet_info->m_ip_size = ip_size;
     packet_info->m_icmp_size = packet_info->m_size - ip_size;
 
-    /* Incomplete packet_info */
+    /* Incomplete ICMP header */
     if (packet_info->m_icmp_size - ip_size < ICMP_HEADER_SIZE) {
-        log_debug("_filter_icmpv4", "packet malformed");
+        log_debug("_filter_icmpv4", "packet malformed (icmp header incomplete)");
         return FT_FAILURE;
     }
 
     packet->m_icmp.m_header = (struct icmphdr*)(raw + ip_size);
-    packet->m_icmp.m_udp_ip = (struct iphdr*)(packet->m_icmp.m_header + ICMP_HEADER_SIZE);
+
+    /* UDP copy IPv4 header not complete */
+    if (packet_info->m_icmp_size - ICMP_HEADER_SIZE < IP_HEADER_SIZE) {
+        log_debug("_filter_icmpv4", "icmp content malformed (ip header incomplete)");
+        return FT_FAILURE;
+    }
+
+    packet->m_icmp.m_udp_ip = (struct iphdr*)(raw + ip_size + ICMP_HEADER_SIZE);
 
     /* Content is not UDP */
     if (packet->m_icmp.m_udp_ip->protocol != IPPROTO_UDP) {
-        log_debug("_filter_icmpv4", "not an UDP message");
+        log_debug("_filter_icmpv4", "not a UDP message");
         return FT_FAILURE;
     }
 
-    ip_size = packet->m_icmp.m_udp_ip->ihl * sizeof(u32);
-    packet->m_icmp.m_udp_data = (u8*)(packet->m_icmp.m_udp_ip + ip_size);
+    const u32 udp_ip_size = packet->m_icmp.m_udp_ip->ihl * sizeof(u32);
 
-    /* Check correspondance */
-    const struct udphdr* udp_copy = (struct udphdr*)(packet->m_icmp.m_udp_data);
-
-    if (ntohs(udp_copy->uh_sport) != g_arguments.m_options.m_src_port ||
-        ntohs(udp_copy->uh_dport) != g_arguments.m_options.m_dest_port) {
+    /* UDP copy UDP header not complete */
+    if (packet_info->m_icmp_size - ICMP_HEADER_SIZE - udp_ip_size < UDP_HEADER_SIZE) {
+        log_debug("_filter_icmpv4", "icmp content malformed (udp header incomplete)");
         return FT_FAILURE;
     }
 
-    log_info("ici");
+    packet->m_icmp.m_udp_data = (struct udphdr*)(raw + ip_size + ICMP_HEADER_SIZE + udp_ip_size);
+
+    /* Check port correspondance */
+    if (ntohs(packet->m_icmp.m_udp_data->uh_sport) != g_arguments.m_options.m_src_port ||
+        ntohs(packet->m_icmp.m_udp_data->uh_dport) != g_arguments.m_options.m_dest_port + g_sequence) {
+        return FT_FAILURE;
+    }
 
     return FT_SUCCESS;
 }
@@ -127,14 +122,14 @@ void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
     inet_ntop(AF_INET, &packet_info->m_addr.sin_addr, src_ip, INET_ADDRSTRLEN);
 
     if (is_numeric) {
-        display("%s  ", src_ip);
+        printf("%s  ", src_ip);
     } else {
         char src_host[NI_MAXHOST];
 
         if (Getnameinfo((struct sockaddr*)&packet_info->m_addr, sizeof(struct sockaddr_in), src_host, NI_MAXHOST, NULL, 0, NI_NAMEREQD) == FT_SUCCESS) {
-            display("%s (%s)  ", src_host, src_ip);
+            printf("%s (%s)  ", src_host, src_ip);
         } else {
-            display("%s (%s)  ", src_ip, src_ip);
+            printf("%s (%s)  ", src_ip, src_ip);
         }
     }
 
@@ -145,47 +140,48 @@ void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
 static
 enum e_Response _process_message(const Packet* packet, const PacketInfo* packet_info) {
     const double rtt = _compute_rtt(&packet_info->m_timestamp, &g_outpacket_info.m_timestamp);
-    display("%.3f ms  ", rtt);
 
-    if (packet->m_icmp.m_header->type == ICMP_DEST_UNREACH) {
-        // log_debug("_process_message", "Destination reached");
-        return RESPONSE_SUCCESS;
-    } else if (packet->m_icmp.m_header->type == ICMP_TIME_EXCEEDED && packet->m_icmp.m_header->code == ICMP_TIMXCEED_INTRANS) {
-        /* New address */
-        if (g_raw_socket.m_ipv4.s_addr != packet_info->m_addr.sin_addr.s_addr) {
-            _translate_source(packet, packet_info);
-        }
+    enum e_Response response = RESPONSE_IGNORE;
 
-        return RESPONSE_ONGOING;
+    if (packet->m_icmp.m_header->type == ICMP_TIME_EXCEEDED && packet->m_icmp.m_header->code == ICMP_TIMXCEED_INTRANS) {
+        response = RESPONSE_ONGOING;
+    } else if (packet->m_icmp.m_header->type == ICMP_DEST_UNREACH) {
+        response = RESPONSE_SUCCESS;
+    } else {
+        return response;
     }
-    return RESPONSE_IGNORE;
+
+    /* New address */
+    if (g_raw_socket.m_ipv4.s_addr != packet_info->m_addr.sin_addr.s_addr) {
+        _translate_source(packet, packet_info);
+    }
+
+    printf("%.3f ms  ", rtt);
+
+    return response;
 }
 
 /* -------------------------------------------------------------------------- */
 
-/**
- * @brief Set a timeout for response reception.
- */
-static
-void _reset_timeout() {
-    _timeout.tv_sec = g_arguments.m_options.m_timeout;
-    _timeout.tv_usec = 0;
-}
-
 enum e_Response wait_responses() {
-    // union u_InPacket buffer;
+    const u32       default_timeout = (u32)(g_arguments.m_options.m_timeout * 1000.0f);
+    struct timeval  timeout = {
+        .tv_sec = default_timeout / 1000U,
+        .tv_usec = (default_timeout % 1000U) * 1000U
+    };
+
+    fd_set listen_fds;
+    FD_ZERO(&listen_fds);
+    FD_SET(g_raw_socket.m_fd, &listen_fds);
+
     u8 buffer[RECV_BUF_SIZE];
 
-    FD_ZERO(&_listen_fds);
-    FD_SET(g_raw_socket.m_fd, &_listen_fds);
-    _reset_timeout();
-
     while (true) {
-        int fds = Select(g_raw_socket.m_fd + 1, &_listen_fds, NULL, NULL, &_timeout);
+        int fds = Select(g_raw_socket.m_fd + 1, &listen_fds, NULL, NULL, &timeout);
         if (fds == -1) {
             return RESPONSE_ERROR;
         } else if (fds == 0) { /* Timeout */
-            display("* ");
+            printf("* ");
             return RESPONSE_TIMEOUT;
         }
 

@@ -1,4 +1,4 @@
-#include <string.h> /* bzero */
+#include <string.h> /* memset */
 
 #include "network_io.h"
 #include "typedefs.h"
@@ -8,8 +8,9 @@
 
 /* --------------------------------- GLOBALS -------------------------------- */
 
-u8*                 g_outpacket = NULL;
-PacketInfo          g_outpacket_info;
+u32         g_sequence = 0U;
+u8*         g_outpacket = NULL;
+PacketInfo  g_outpacket_info;
 
 /* -------------------------------------------------------------------------- */
 
@@ -35,16 +36,14 @@ FT_RESULT allocate_buffer(void) {
 
 void deallocate_buffer(void) {
     Free(g_outpacket);
+    g_outpacket = NULL;
 }
 
-
 FT_RESULT send_request(const u8 ttl) {
-    static u32 seq = 0U;
-
     memset(&g_outpacket_info.m_addr.sin_zero, 0, sizeof(g_outpacket_info.m_addr.sin_zero));
     g_outpacket_info.m_addr.sin_addr = g_udp_socket.m_ipv4;
     g_outpacket_info.m_addr.sin_family = AF_INET;
-    g_outpacket_info.m_addr.sin_port = htons(g_arguments.m_options.m_dest_port + seq++);
+    g_outpacket_info.m_addr.sin_port = htons(g_arguments.m_options.m_dest_port + g_sequence);
 
     if (Gettimeofday(&g_outpacket_info.m_timestamp, NULL) == FT_FAILURE) {
         return FT_FAILURE;

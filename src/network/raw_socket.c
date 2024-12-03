@@ -51,11 +51,6 @@ FT_RESULT _destroy_malformed_data(void) {
 
 /* -------------------------------------------------------------------------- */
 
-// TODO
-//
-//
-
-
 /**
  * @brief Open sending socket (UDP) and receiving socket (RAW).
  */

@@ -31,9 +31,8 @@ typedef struct s_Packet {
     union {
         struct {
             struct icmphdr* m_header;
-            #define m_icmp_unused  m_header.un.gateway
-            struct iphdr*   m_udp_ip;
-            void*           m_udp_data;//[ICMP_COPY_SIZE];
+            struct iphdr*   m_udp_ip;   /* Time exceeded or destination unreachable ICMP packets */
+            struct udphdr*  m_udp_data; /* contain the original IP header and UDP header */
         } __icmp;
         struct {
             struct udphdr*  m_header;
@@ -75,9 +74,10 @@ enum e_Response {
 /*                                   GLOBALS                                  */
 /* -------------------------------------------------------------------------- */
 
-extern pid_t                g_pid;
-extern u8*                  g_outpacket;
-extern PacketInfo           g_outpacket_info;
+extern pid_t        g_pid;
+extern u32          g_sequence;
+extern u8*          g_outpacket;
+extern PacketInfo   g_outpacket_info;
 
 /* -------------------------------------------------------------------------- */
 /*                                 PROTOTYPES                                 */

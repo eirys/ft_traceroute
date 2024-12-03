@@ -30,7 +30,6 @@ SRC_FILES	:=	main.c \
 				$(INPUT_DIR)/callbacks.c \
 				$(UTILS_DIR)/signal_handlers.c \
 				$(UTILS_DIR)/wrapper.c \
-				$(UTILS_DIR)/stats.c \
 				$(UTILS_DIR)/log.c
 
 SRC			:=	$(addprefix $(SRC_DIR)/,$(SRC_FILES))
