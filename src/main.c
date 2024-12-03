@@ -1,7 +1,6 @@
 #include <stdlib.h> /* exit */
 #include <unistd.h> /* getpid */
 #include <stdio.h> /* printf */
-#include <sys/param.h> /* MAX */
 #include <arpa/inet.h> /* inet_ntoa */
 
 #include "network_io.h"
@@ -16,21 +15,6 @@ pid_t g_pid;
 
 /* -------------------------------------------------------------------------- */
 
-static void deb() {
-    printf(" packet len = %d\n", g_arguments.m_packet_size);
-    printf(" queries = %d\n", g_arguments.m_options.m_queries);
-    // printf(" simultaneous = %d\n", g_arguments.m_options.m_simultaneous); // TODO
-    printf(" wait = %f\n", g_arguments.m_options.m_timeout);
-    printf(" sport = %d\n", g_arguments.m_options.m_src_port);
-    printf(" port = %d\n", g_arguments.m_options.m_dest_port);
-    printf(" tos = %d\n", g_arguments.m_options.m_tos);
-    printf(" max hops = %d\n", g_arguments.m_options.m_max_hop);
-    printf(" first hop = %d\n", g_arguments.m_options.m_start_hop);
-    printf(" numeric = %d\n", g_arguments.m_options.m_numeric);
-    printf(" help = %d\n", g_arguments.m_options.m_help);
-    printf(" destination = %s\n", g_arguments.m_destination);
-}
-
 static
 void _show_help(const char* program_name) {
     log_info("Usage: %s [OPTION] <destination> [packet_len]", program_name);
@@ -39,7 +23,6 @@ void _show_help(const char* program_name) {
     log_info("  packet_len              Size of the packet (default: %u)\n", g_arguments.m_packet_size);
     log_info("  --help                  Display this help and exit");
     log_info("  -q, --queries <n>       Number of queries/probes sent (default: %u)", g_arguments.m_options.m_queries);
-    // log_info("  -N, --sim-queries <n>   Number of simultaneous probes (default: 16)"); // TODO
     log_info("  -w, --wait <n>          Timeout for a probe (default: %u)", g_arguments.m_options.m_timeout);
     log_info("  --sport <n>             Source port (default: %u)", (u32)g_arguments.m_options.m_src_port);
     log_info("  -p, --port <n>          Destination port (default: %u)", (u32)g_arguments.m_options.m_dest_port);
@@ -68,7 +51,6 @@ void _cleanup(void) {
 
 /* -------------------------------------------------------------------------- */
 
-//TODO: multithreading for simultaneous probes
 static
 FT_RESULT _traceroute() {
     /* Setup */
@@ -82,7 +64,8 @@ FT_RESULT _traceroute() {
         return FT_FAILURE;
     }
 
-    printf("ft_traceroute to %s (%s), %u hops max, %d byte packets\n",
+    /* Main loop */
+    log_info("ft_traceroute to %s (%s), %u hops max, %d byte packets",
         g_arguments.m_destination,
         inet_ntoa(g_udp_socket.m_ipv4),
         g_arguments.m_options.m_max_hop,
@@ -133,13 +116,11 @@ int main(const int arg_count, char* const* arg_value) {
         return EXIT_FAILURE;
     }
 
-    g_pid = getpid() & 0xFFFF | 0x8000; /* Retrieve the last 16 bits of the PID and set the most significant bit to 1 */
+    g_pid = (getpid() & 0xFFFF) | 0x8000; /* Retrieve the last 16 bits of the PID and set the most significant bit to 1 */
 
     if (retrieve_arguments(arg_count, arg_value) == FT_FAILURE) {
         return EXIT_FAILURE;
     }
-    //TODO: remove
-    deb();
 
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);

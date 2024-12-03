@@ -65,14 +65,13 @@ FT_RESULT _filter_icmpv4(u8* raw, Packet* packet, PacketInfo* packet_info) {
         return FT_FAILURE;
     }
 
-    packet->m_icmp.m_header = (struct icmphdr*)(raw + ip_size);
-
     /* UDP copy IPv4 header not complete */
     if (packet_info->m_icmp_size - ICMP_HEADER_SIZE < IP_HEADER_SIZE) {
         log_debug("_filter_icmpv4", "icmp content malformed (ip header incomplete)");
         return FT_FAILURE;
     }
 
+    packet->m_icmp.m_header = (struct icmphdr*)(raw + ip_size);
     packet->m_icmp.m_udp_ip = (struct iphdr*)(raw + ip_size + ICMP_HEADER_SIZE);
 
     /* Content is not UDP */
@@ -115,7 +114,7 @@ double _compute_rtt(const struct timeval* t1, const struct timeval* t2) {
 }
 
 static
-void _translate_source(const Packet* packet, const PacketInfo* packet_info) {
+void _translate_source(const PacketInfo* packet_info) {
     bool is_numeric = g_arguments.m_options.m_numeric;
 
     char src_ip[INET_ADDRSTRLEN];
@@ -153,7 +152,7 @@ enum e_Response _process_message(const Packet* packet, const PacketInfo* packet_
 
     /* New address */
     if (g_raw_socket.m_ipv4.s_addr != packet_info->m_addr.sin_addr.s_addr) {
-        _translate_source(packet, packet_info);
+        _translate_source(packet_info);
     }
 
     printf("%.3f ms  ", rtt);

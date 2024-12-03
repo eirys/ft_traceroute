@@ -9,10 +9,21 @@
 /* -------------------------------------------------------------------------- */
 
 static
-int _isfloat(int c) {
-    return c == '.' || isdigit(c);
-}
+FT_RESULT _isfloat(const char* s) {
+    while (isdigit(*s) != 0) {
+        ++s;
+    }
 
+    if (*s == '.') {
+        ++s;
+    }
+
+    while (isdigit(*s) != 0) {
+        ++s;
+    }
+
+    return *s == '\0' ? FT_SUCCESS : FT_FAILURE;
+}
 
 static
 FT_RESULT _check_str_kind(const char* value, int (*kind)(int)) {
@@ -31,7 +42,7 @@ FT_RESULT _check_str_kind(const char* value, int (*kind)(int)) {
 
 /* -------------------------------------------------------------------------- */
 
-FT_RESULT process_uint(const char* raw, void* flag, void* next, const char* err) {
+FT_RESULT process_uint(const char* raw, void* flag, void* next) {
     if (_check_str_kind(raw, &isdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
@@ -39,8 +50,8 @@ FT_RESULT process_uint(const char* raw, void* flag, void* next, const char* err)
     const u64 result = strtoul(raw, NULL, 10);
 
     if (next != NULL) {
-        FT_RESULT (*extra)(void*, const char*) = (FT_RESULT (*)(void*, const char*))next;
-        if (extra((void*)&result, err) == FT_FAILURE) {
+        FT_RESULT (*extra)(void*) = (FT_RESULT (*)(void*))next;
+        if (extra((void*)&result) == FT_FAILURE) {
             return FT_FAILURE;
         }
     }
@@ -50,7 +61,7 @@ FT_RESULT process_uint(const char* raw, void* flag, void* next, const char* err)
     return FT_SUCCESS;
 }
 
-FT_RESULT process_ushort(const char* raw, void* flag, void* next, const char* err) {
+FT_RESULT process_ushort(const char* raw, void* flag, void* next) {
     if (_check_str_kind(raw, &isdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
@@ -62,8 +73,8 @@ FT_RESULT process_ushort(const char* raw, void* flag, void* next, const char* er
     }
 
     if (next != NULL) {
-        FT_RESULT (*extra)(void*, const char*) = (FT_RESULT (*)(void*, const char*))next;
-        if (extra((void*)&result, err) == FT_FAILURE) {
+        FT_RESULT (*extra)(void*) = (FT_RESULT (*)(void*))next;
+        if (extra((void*)&result) == FT_FAILURE) {
             return FT_FAILURE;
         }
     }
@@ -73,7 +84,7 @@ FT_RESULT process_ushort(const char* raw, void* flag, void* next, const char* er
     return FT_SUCCESS;
 }
 
-FT_RESULT process_uchar(const char* raw, void* flag, void* next, const char* err) {
+FT_RESULT process_uchar(const char* raw, void* flag, void* next) {
     if (_check_str_kind(raw, &isdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
@@ -85,8 +96,8 @@ FT_RESULT process_uchar(const char* raw, void* flag, void* next, const char* err
     }
 
     if (next != NULL) {
-        FT_RESULT (*extra)(void*, const char*) = (FT_RESULT (*)(void*, const char*))next;
-        if (extra((void*)&result, err) == FT_FAILURE) {
+        FT_RESULT (*extra)(void*) = (FT_RESULT (*)(void*))next;
+        if (extra((void*)&result) == FT_FAILURE) {
             return FT_FAILURE;
         }
     }
@@ -96,8 +107,8 @@ FT_RESULT process_uchar(const char* raw, void* flag, void* next, const char* err
     return FT_SUCCESS;
 }
 
-FT_RESULT process_float(const char* raw, void* flag, void* next, const char* err) {
-    if (_check_str_kind(raw, &_isfloat) == FT_FAILURE) {
+FT_RESULT process_float(const char* raw, void* flag, void* next) {
+    if (_isfloat(raw) == FT_FAILURE) {
         return FT_FAILURE;
     }
 
@@ -107,24 +118,29 @@ FT_RESULT process_float(const char* raw, void* flag, void* next, const char* err
         return FT_FAILURE;
     }
 
+    if (next != NULL) {
+        FT_RESULT (*extra)(void*) = (FT_RESULT (*)(void*))next;
+        if (extra((void*)&result) == FT_FAILURE) {
+            return FT_FAILURE;
+        }
+    }
+
     *((f32*)flag) = result;
 
     return FT_SUCCESS;
 }
 
 
-FT_RESULT extra_over_zero(void* flag, const char* err) {
+FT_RESULT extra_port(void* flag) {
     if (*(u64*)flag == 0) {
-        log_error("bad value: %s", err);
+        log_error("can't set destination port to 0");
         return FT_FAILURE;
     }
 
     return FT_SUCCESS;
 }
 
-FT_RESULT extra_default_sport(void* flag, const char* err) {
-    (void)err;
-
+FT_RESULT extra_default_sport(void* flag) {
     if (*(u16*)flag == 0) {
         *(u16*)flag = (u64)g_pid;
     }
@@ -132,13 +148,23 @@ FT_RESULT extra_default_sport(void* flag, const char* err) {
     return FT_SUCCESS;
 }
 
-FT_RESULT extra_default_len(void* flag, const char* err) {
-    (void)err;
-
+FT_RESULT extra_default_len(void* flag) {
     if (*(u64*)flag > IP_HEADER_SIZE + UDP_HEADER_SIZE) {
         *(u64*)flag = *(u64*)flag - (IP_HEADER_SIZE + UDP_HEADER_SIZE);
     } else {
         *(u64*)flag = 0;
+    }
+
+    return FT_SUCCESS;
+}
+
+FT_RESULT extra_probes(void* flag) {
+    if (*(u64*)flag == 0) {
+        log_error("can't send 0 probes");
+        return FT_FAILURE;
+    } else if (*(u64*)flag > 10) {
+        log_error("no more than 10 probes per hop");
+        return FT_FAILURE;
     }
 
     return FT_SUCCESS;
