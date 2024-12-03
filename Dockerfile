@@ -1,6 +1,6 @@
 FROM debian:latest
 
-# COPY ./ft_traceroute /home/ft_traceroute
+COPY ./ft_traceroute /home/ft_traceroute
 
 RUN apt update -y \
 && apt install -yq \
@@ -14,7 +14,6 @@ traceroute \
 wireshark \
 && apt clean -y
 
-WORKDIR /home/trace_output
-# WORKDIR /home
+WORKDIR /home
 
 CMD ["tail", "-f", "/dev/null"]

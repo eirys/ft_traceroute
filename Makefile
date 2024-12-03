@@ -92,18 +92,10 @@ CONTAINER	:=	debian42
 # ============================================================================ #
 
 .PHONY: all
-all: $(LIBFT) $(NAME) copy
+all: $(LIBFT) $(NAME)
 
 $(LIBFT):
 	@make -sC libft
-
-.PHONY: trace_output
-trace_output:
-	mkdir -p trace_output/
-
-.PHONY: copy
-copy: trace_output
-	cp $(NAME) trace_output/$(NAME)
 
 -include $(DEP)
 
@@ -136,8 +128,7 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-# up: graphics_permission
-up: trace_output graphics_permission
+up: all graphics_permission
 	$(COMPOSE) up -d
 
 .PHONY: graphics_permission
