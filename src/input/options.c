@@ -27,6 +27,8 @@ Arguments g_arguments = {
     .m_destination = NULL
 };
 
+/* -------------------------------------------------------------------------- */
+
 static int _current_option; /* Current option being processed */
 
 /* -------------------------------------------------------------------------- */
@@ -38,8 +40,8 @@ enum e_OptionIndex {
     OPTION_HELP = 0U,
     OPTION_Q,
     OPTION_Q_LONG,
-    OPTION_N_CAP,
-    OPTION_N_CAP_LONG,
+    // OPTION_N_CAP,
+    // OPTION_N_CAP_LONG,
     OPTION_W,
     OPTION_W_LONG,
     OPTION_SPORT,
@@ -62,7 +64,7 @@ enum e_OptionIndex {
  */
 enum e_ShortOptionFlag {
     FLAG_Q = 'q',
-    FLAG_N_CAP = 'N',
+    // FLAG_N_CAP = 'N',
     FLAG_W = 'w',
     FLAG_P = 'p',
     FLAG_T = 't',
@@ -80,7 +82,7 @@ enum e_ShortOptionFlag {
 enum e_LongOptionIndex {
     LONG_OPTION_HELP = 0,
     LONG_OPTION_QUERIES,
-    LONG_OPTION_SIMULTANEOUS,
+    // LONG_OPTION_SIMULTANEOUS,
     LONG_OPTION_WAIT,
     LONG_OPTION_SPORT,
     LONG_OPTION_PORT,
@@ -131,8 +133,6 @@ FT_RESULT _set_flag(
     return FT_SUCCESS;
 }
 
-/* -------------------------------------------------------------------------- */
-
 static
 FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
     Options* options = &g_arguments.m_options;
@@ -140,7 +140,7 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
     int long_option[LONG_OPTION_COUNT] = {
         [LONG_OPTION_HELP] = 0,
         [LONG_OPTION_QUERIES] = 0,
-        [LONG_OPTION_SIMULTANEOUS] = 0,
+        // [LONG_OPTION_SIMULTANEOUS] = 0,
         [LONG_OPTION_WAIT] = 0,
         [LONG_OPTION_SPORT] = 0,
         [LONG_OPTION_PORT] = 0,
@@ -154,7 +154,7 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         /* Short options */
         { "n",              no_argument,        NULL,                                   FLAG_N },
         { "q",              required_argument,  NULL,                                   FLAG_Q },
-        { "N",              required_argument,  NULL,                                   FLAG_N_CAP },
+        // { "N",              required_argument,  NULL,                                   FLAG_N_CAP },
         { "w",              required_argument,  NULL,                                   FLAG_W },
         { "p",              required_argument,  NULL,                                   FLAG_P },
         { "t",              required_argument,  NULL,                                   FLAG_T },
@@ -164,7 +164,7 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
         { "help",           no_argument,        &long_option[LONG_OPTION_HELP],         1 },
         { "numeric",        no_argument,        &long_option[LONG_OPTION_NUMERIC],      1 },
         { "queries",        required_argument,  &long_option[LONG_OPTION_QUERIES],      1 },
-        { "sim-queries",    required_argument,  &long_option[LONG_OPTION_SIMULTANEOUS], 1 },
+        // { "sim-queries",    required_argument,  &long_option[LONG_OPTION_SIMULTANEOUS], 1 },
         { "wait",           required_argument,  &long_option[LONG_OPTION_WAIT],         1 },
         { "sport",          required_argument,  &long_option[LONG_OPTION_SPORT],        1 },
         { "port",           required_argument,  &long_option[LONG_OPTION_PORT],         1 },
@@ -185,7 +185,7 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
                      if (long_option[LONG_OPTION_HELP]) { _enable_flag(&options->m_help); return FT_SUCCESS; }
                 else if (long_option[LONG_OPTION_NUMERIC]) { _enable_flag(&options->m_numeric); }
                 else if (long_option[LONG_OPTION_QUERIES]) { if (_set_flag((void*)&options->m_queries, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; } }
-                else if (long_option[LONG_OPTION_SIMULTANEOUS]) { if (_set_flag((void*)&options->m_simultaneous, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; } }
+                // else if (long_option[LONG_OPTION_SIMULTANEOUS]) { if (_set_flag((void*)&options->m_simultaneous, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_WAIT]) { if (_set_flag((void*)&options->m_timeout, &process_float, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_SPORT]) { if (_set_flag((void*)&options->m_src_port, &process_ushort, &extra_default_sport, NULL) == FT_FAILURE) { return FT_FAILURE; } }
                 else if (long_option[LONG_OPTION_PORT]) { if (_set_flag((void*)&options->m_dest_port, &process_ushort, &extra_over_zero, "can't set destination port to 0") == FT_FAILURE) { return FT_FAILURE; } }
@@ -200,7 +200,7 @@ FT_RESULT _retrieve_options(const int arg_count, char* const* arg_values) {
             /* Short options */
             case FLAG_N:        _enable_flag(&options->m_numeric); break;
             case FLAG_Q:        if (_set_flag((void*)&options->m_numeric, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; }; break;
-            case FLAG_N_CAP:    if (_set_flag((void*)&options->m_simultaneous, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; }; break;
+            // case FLAG_N_CAP:    if (_set_flag((void*)&options->m_simultaneous, &process_uint, &extra_over_zero, "can't send 0 probes") == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_W:        if (_set_flag((void*)&options->m_timeout, &process_float, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_P:        if (_set_flag((void*)&options->m_dest_port, &process_ushort, &extra_over_zero, "can't set destination port to 0") == FT_FAILURE) { return FT_FAILURE; }; break;
             case FLAG_T:        if (_set_flag((void*)&options->m_tos, &process_uchar, NULL, NULL) == FT_FAILURE) { return FT_FAILURE; }; break;
