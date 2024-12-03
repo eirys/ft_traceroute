@@ -15,6 +15,21 @@ pid_t g_pid;
 
 /* -------------------------------------------------------------------------- */
 
+static void deb() {
+    printf(" packet len = %d\n", g_arguments.m_packet_size);
+    printf(" queries = %d\n", g_arguments.m_options.m_queries);
+    // printf(" simultaneous = %d\n", g_arguments.m_options.m_simultaneous); // TODO
+    printf(" wait = %f\n", g_arguments.m_options.m_timeout);
+    printf(" sport = %d\n", g_arguments.m_options.m_src_port);
+    printf(" port = %d\n", g_arguments.m_options.m_dest_port);
+    printf(" tos = %d\n", g_arguments.m_options.m_tos);
+    printf(" max hops = %d\n", g_arguments.m_options.m_max_hop);
+    printf(" first hop = %d\n", g_arguments.m_options.m_start_hop);
+    printf(" numeric = %d\n", g_arguments.m_options.m_numeric);
+    printf(" help = %d\n", g_arguments.m_options.m_help);
+    printf(" destination = %s\n", g_arguments.m_destination);
+}
+
 static
 void _show_help(const char* program_name) {
     log_info("Usage: %s [OPTION] <destination> [packet_len]", program_name);
@@ -121,7 +136,7 @@ int main(const int arg_count, char* const* arg_value) {
     if (retrieve_arguments(arg_count, arg_value) == FT_FAILURE) {
         return EXIT_FAILURE;
     }
-
+deb();
     if (g_arguments.m_options.m_help) {
         _show_help(arg_value[0]);
     } else if (_traceroute() == FT_FAILURE) {

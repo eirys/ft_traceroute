@@ -56,7 +56,7 @@ FT_RESULT process_uint(const char* raw, void* flag, void* next) {
         }
     }
 
-    *((u64*)flag) = (u64)result;
+    *((u32*)flag) = (u32)result;
 
     return FT_SUCCESS;
 }
@@ -132,7 +132,7 @@ FT_RESULT process_float(const char* raw, void* flag, void* next) {
 
 
 FT_RESULT extra_port(void* flag) {
-    if (*(u64*)flag == 0) {
+    if (*(u16*)flag == 0) {
         log_error("can't set destination port to 0");
         return FT_FAILURE;
     }
@@ -149,20 +149,20 @@ FT_RESULT extra_default_sport(void* flag) {
 }
 
 FT_RESULT extra_default_len(void* flag) {
-    if (*(u64*)flag > IP_HEADER_SIZE + UDP_HEADER_SIZE) {
-        *(u64*)flag = *(u64*)flag - (IP_HEADER_SIZE + UDP_HEADER_SIZE);
+    if (*(u32*)flag > IP_HEADER_SIZE + UDP_HEADER_SIZE) {
+        *(u32*)flag = *(u32*)flag - (IP_HEADER_SIZE + UDP_HEADER_SIZE);
     } else {
-        *(u64*)flag = 0;
+        *(u32*)flag = 0;
     }
 
     return FT_SUCCESS;
 }
 
 FT_RESULT extra_probes(void* flag) {
-    if (*(u64*)flag == 0) {
+    if (*(u32*)flag == 0) {
         log_error("can't send 0 probes");
         return FT_FAILURE;
-    } else if (*(u64*)flag > 10) {
+    } else if (*(u32*)flag > 10) {
         log_error("no more than 10 probes per hop");
         return FT_FAILURE;
     }
