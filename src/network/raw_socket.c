@@ -1,8 +1,7 @@
-#include "raw_socket.h"
-
-#include <string.h> /* memset */
 #include <arpa/inet.h> /* inet_ntop */
 
+#include "libft.h"
+#include "raw_socket.h"
 #include "log.h"
 #include "wrapper.h"
 #include "options.h"
@@ -28,7 +27,7 @@ struct addrinfo* _resolve_ip(const char* destination) {
     struct addrinfo* output;
 
     struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
+    ft_memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;          /* Allow IPv4 */
 
     if (Getaddrinfo(destination, NULL, &hints, &output) == FT_FAILURE) {

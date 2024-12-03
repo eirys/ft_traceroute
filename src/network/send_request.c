@@ -1,5 +1,5 @@
-#include <string.h> /* memset */
 
+#include "libft.h"
 #include "network_io.h"
 #include "typedefs.h"
 #include "options.h"
@@ -40,7 +40,7 @@ void deallocate_buffer(void) {
 }
 
 FT_RESULT send_request(const u8 ttl) {
-    memset(&g_outpacket_info.m_addr.sin_zero, 0, sizeof(g_outpacket_info.m_addr.sin_zero));
+    ft_memset(&g_outpacket_info.m_addr.sin_zero, 0, sizeof(g_outpacket_info.m_addr.sin_zero));
     g_outpacket_info.m_addr.sin_addr = g_udp_socket.m_ipv4;
     g_outpacket_info.m_addr.sin_family = AF_INET;
     g_outpacket_info.m_addr.sin_port = htons(g_arguments.m_options.m_dest_port + g_sequence);

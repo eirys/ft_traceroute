@@ -1,7 +1,7 @@
-#include <ctype.h> /* isdigit */
 #include <stdlib.h> /* strtoul */
 #include <stdio.h> /* sscanf */
 
+#include "libft.h"
 #include "typedefs.h"
 #include "network_io.h"
 #include "log.h"
@@ -10,7 +10,7 @@
 
 static
 FT_RESULT _isfloat(const char* s) {
-    while (isdigit(*s) != 0) {
+    while (ft_isdigit(*s) != 0) {
         ++s;
     }
 
@@ -18,7 +18,7 @@ FT_RESULT _isfloat(const char* s) {
         ++s;
     }
 
-    while (isdigit(*s) != 0) {
+    while (ft_isdigit(*s) != 0) {
         ++s;
     }
 
@@ -43,11 +43,11 @@ FT_RESULT _check_str_kind(const char* value, int (*kind)(int)) {
 /* -------------------------------------------------------------------------- */
 
 FT_RESULT process_uint(const char* raw, void* flag, void* next) {
-    if (_check_str_kind(raw, &isdigit) == FT_FAILURE) {
+    if (_check_str_kind(raw, &ft_isdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
 
-    const u64 result = strtoul(raw, NULL, 10);
+    const u64 result = ft_atou(raw);
 
     if (next != NULL) {
         FT_RESULT (*extra)(void*) = (FT_RESULT (*)(void*))next;
@@ -62,11 +62,11 @@ FT_RESULT process_uint(const char* raw, void* flag, void* next) {
 }
 
 FT_RESULT process_ushort(const char* raw, void* flag, void* next) {
-    if (_check_str_kind(raw, &isdigit) == FT_FAILURE) {
+    if (_check_str_kind(raw, &ft_isdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
 
-    const int result = atoi(raw);
+    const int result = ft_atoi(raw);
     if (result < 0 || result > UINT16_MAX) {
         log_error("bad value: `%s'", raw);
         return FT_FAILURE;
@@ -85,11 +85,11 @@ FT_RESULT process_ushort(const char* raw, void* flag, void* next) {
 }
 
 FT_RESULT process_uchar(const char* raw, void* flag, void* next) {
-    if (_check_str_kind(raw, &isdigit) == FT_FAILURE) {
+    if (_check_str_kind(raw, &ft_isdigit) == FT_FAILURE) {
         return FT_FAILURE;
     }
 
-    const int result = atoi(raw);
+    const int result = ft_atoi(raw);
     if (result < 0 || result > UINT8_MAX) {
         log_error("bad value: `%s'", raw);
         return FT_FAILURE;

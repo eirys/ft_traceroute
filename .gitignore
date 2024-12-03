@@ -6,4 +6,5 @@
 !Dockerfile
 !docker-compose.yml
 
+!libft
 !src

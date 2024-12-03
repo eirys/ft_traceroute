@@ -11,9 +11,6 @@
 void*       Malloc(const u32 size);
 FT_RESULT   Free(void* data);
 
-/* --------------------------------- STRING --------------------------------- */
-char*       Strdup(const char* data);
-
 /* ------------------------------- RAW MEMORY ------------------------------- */
 void        Memset64(void* dest, u64 value, u32 size);
 

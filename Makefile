@@ -45,7 +45,8 @@ CXX			:=	gcc
 ## Flags
 MACROS		:=
 
-INCLUDES	:=	$(addprefix -I./,$(INC_SUBDIRS))
+INCLUDES	:=	$(addprefix -I./,$(INC_SUBDIRS)) \
+				-I./libft
 
 CFLAGS		:=	-MMD \
 				-MP \
@@ -82,6 +83,7 @@ LDFLAGS		:=	-lm
 # ----------------------------------- MISC ----------------------------------- #
 RM			:=	rm -rf
 
+LIBFT 		:=	libft/libft.a
 COMPOSE		:=	docker compose
 CONTAINER	:=	debian42
 
@@ -90,13 +92,24 @@ CONTAINER	:=	debian42
 # ============================================================================ #
 
 .PHONY: all
-all: $(NAME)
+all: $(LIBFT) $(NAME) copy
+
+$(LIBFT):
+	@make -sC libft
+
+.PHONY: trace_output
+trace_output:
+	mkdir -p trace_output/
+
+.PHONY: copy
+copy: trace_output
+	cp $(NAME) trace_output/$(NAME)
 
 -include $(DEP)
 
 # Compile binary
 $(NAME):   $(OBJ)
-	@$(CXX) $(CFLAGS) $(OBJ) -o $(NAME) $(LDFLAGS)
+	@$(CXX) $(CFLAGS) $(OBJ) -o $(NAME) $(LDFLAGS) $(LIBFT)
 	@echo "\`$(NAME)\` successfully created."
 
 # Compile obj files
@@ -107,11 +120,13 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 
 .PHONY: clean
 clean:
+	@make -sC libft clean
 	@$(RM) $(OBJ_DIR)
 	@echo "Cleaning object files and dependencies."
 
 .PHONY: fclean
 fclean: clean
+	@make -sC libft fclean
 	@$(RM) $(NAME)
 	@echo "Removed $(NAME)."
 
@@ -121,7 +136,8 @@ re: fclean all
 # ---------------------------------- DOCKER ---------------------------------- #
 
 .PHONY: up
-up: all graphics_permission
+# up: graphics_permission
+up: trace_output graphics_permission
 	$(COMPOSE) up -d
 
 .PHONY: graphics_permission

@@ -1,6 +1,5 @@
 #include "wrapper.h"
 
-#include <string.h> /* strdup */
 #include <stdlib.h> /* malloc, free */
 #include <unistd.h> /* close */
 #include <sys/socket.h> /* socket */
@@ -37,23 +36,6 @@ FT_RESULT Free(void* data) {
     }
     free(data);
     return FT_SUCCESS;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                   STRING                                   */
-/* -------------------------------------------------------------------------- */
-
-char* Strdup(const char* data) {
-    if (data == NULL) {
-        _error("strdup", "data is NULL");
-        return NULL;
-    }
-    char* str = strdup(data);
-    if (str == NULL) {
-        _error("strdup", "failed to duplicate string");
-        return NULL;
-    }
-    return str;
 }
 
 /* -------------------------------------------------------------------------- */
